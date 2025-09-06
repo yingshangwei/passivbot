@@ -452,6 +452,8 @@ class OHLCVManager:
 
     async def get_start_date_modified(self, coin):
         fts = await self.get_first_timestamp(coin)
+        if fts is None or fts == 0.0:
+            return ts_to_date_utc(self.start_ts)[:10]
         return ts_to_date_utc(max(self.start_ts, fts))[:10]
 
     async def get_missing_days_ohlcvs(self, coin):
@@ -520,12 +522,23 @@ class OHLCVManager:
         elif self.exchange == "bitget":
             fts = await self.find_first_day_bitget(coin)
             return fts
-        if ohlcvs:
-            fts = ohlcvs[0][0]
+        elif self.exchange == "okx":
+            # For OKX, try to fetch first timestamp
+            try:
+                ohlcvs = await self.cc.fetch_ohlcv(self.get_symbol(coin), since=1, timeframe="1d")
+                if ohlcvs:
+                    fts = ohlcvs[0][0]
+                else:
+                    fts = 0.0
+            except Exception:
+                fts = 0.0
+            self.dump_first_timestamp(coin, fts)
+            return fts
         else:
+            # Default case for other exchanges
             fts = 0.0
-        self.dump_first_timestamp(coin, fts)
-        return fts
+            self.dump_first_timestamp(coin, fts)
+            return fts
 
     def load_cc(self):
         if self.cc is None:

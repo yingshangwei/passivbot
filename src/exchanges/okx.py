@@ -120,6 +120,17 @@ class OKXBot(Passivbot):
                                 if elm2["ccy"] != self.quote
                                 else 1.0
                             )
+                
+                # 如果没有启用抵押品的资产，使用 USDT 余额作为后备
+                if balance == 0.0:
+                    for elm in fetched_balance["info"]["data"]:
+                        for elm2 in elm["details"]:
+                            if elm2["ccy"] == self.quote:
+                                balance = float(elm2["cashBal"])
+                                break
+                        if balance > 0.0:
+                            break
+                
                 if not hasattr(self, "previous_rounded_balance"):
                     self.previous_rounded_balance = balance
                 self.previous_rounded_balance = pbr.hysteresis_rounding(
