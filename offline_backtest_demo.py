@@ -223,20 +223,38 @@ def main():
     print("1. 创建模拟OHLCV数据...")
     ohlcv_data = create_mock_ohlcv_data(symbol, start_date, end_date)
     
-    print("\n2. 创建策略配置...")
-    config = {
-        "backtest": {
-            "starting_balance": 10000
-        },
-        "bot": {
-            "long": {
-                "entry_grid_spacing_pct": 0.01,  # 1%网格间距
-                "close_grid_markup_start": 0.005,  # 0.5%止盈
-                "entry_initial_qty_pct": 0.1,  # 每次用10%资金
-                "n_positions": 5  # 最多5个仓位
+    print("\n2. 加载自定义配置...")
+    try:
+        import hjson
+        with open('my_config_custom.json', 'r') as f:
+            config = hjson.load(f)
+        print("✅ 成功加载 my_config_custom.json 配置")
+        
+        # 显示关键配置信息
+        coins = config['live']['approved_coins']['long']
+        bot_config = config['bot']['long']
+        print(f"   币种: {coins}")
+        print(f"   杠杆: {config['live']['leverage']}倍")
+        print(f"   网格间距: {bot_config['entry_grid_spacing_pct'] * 100}%")
+        print(f"   初始入场比例: {bot_config['entry_initial_qty_pct'] * 100}%")
+        print(f"   最大持仓: {bot_config['n_positions']}个")
+        
+    except Exception as e:
+        print(f"❌ 加载自定义配置失败: {e}")
+        print("使用默认配置...")
+        config = {
+            "backtest": {
+                "starting_balance": 10000
+            },
+            "bot": {
+                "long": {
+                    "entry_grid_spacing_pct": 0.01,  # 1%网格间距
+                    "close_grid_markup_start": 0.005,  # 0.5%止盈
+                    "entry_initial_qty_pct": 0.1,  # 每次用10%资金
+                    "n_positions": 5  # 最多5个仓位
+                }
             }
         }
-    }
     
     print("\n3. 运行回测...")
     result = simple_grid_strategy_backtest(ohlcv_data, config)

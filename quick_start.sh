@@ -257,8 +257,14 @@ run_backtest() {
     
     activate_environment
     
-    # 检查配置文件
-    check_config_file
+    # 确定配置文件
+    local config_file="${1:-my_config.json}"
+    if [[ ! -f "$config_file" ]]; then
+        print_error "配置文件不存在: $config_file"
+        exit 1
+    fi
+    print_success "配置文件存在"
+    print_message "配置文件来源: 本地文件"
     
     # 检查网络连接
     print_message "检查网络连接..."
@@ -279,7 +285,7 @@ run_backtest() {
     local start_date="${2:-2024-01-01}"
     local end_date="${3:-2024-06-01}"
     
-    python src/backtest.py my_config.json
+    python src/backtest.py "$config_file"
     
     print_success "回测完成！"
     
@@ -483,8 +489,26 @@ start_trading() {
     
     activate_environment
     
-    # 检查配置文件
-    check_config_file
+    # 确定配置文件
+    local config_file="${1:-my_config.json}"
+    if [[ ! -f "$config_file" ]]; then
+        print_error "配置文件不存在: $config_file"
+        exit 1
+    fi
+    print_success "配置文件存在: $config_file"
+    
+    # 显示配置摘要
+    echo
+    print_message "配置摘要:"
+    if command -v jq >/dev/null 2>&1; then
+        echo "  用户: $(jq -r '.live.user // "未设置"' "$config_file" 2>/dev/null)"
+        echo "  币种: $(jq -r '.live.approved_coins.long[0] // "未设置"' "$config_file" 2>/dev/null)"
+        echo "  杠杆: $(jq -r '.live.leverage // "未设置"' "$config_file" 2>/dev/null)"
+        echo "  币种数量: $(jq -r '.live.approved_coins.long | length' "$config_file" 2>/dev/null)"
+    else
+        echo "  配置文件: $config_file"
+        echo "  注意: 需要安装jq来显示详细配置"
+    fi
     
     # 检查API密钥配置
     if ! grep -q '"key": "key"' api-keys.json; then
@@ -492,7 +516,7 @@ start_trading() {
     fi
     
     print_message "启动交易机器人..."
-    python src/main.py my_config.json
+    python src/main.py "$config_file"
 }
 
 # 在tmux中启动交易
@@ -964,13 +988,15 @@ main() {
             run_demo
             ;;
         "backtest")
+            shift  # 移除 "backtest" 参数
             run_backtest "$@"
             ;;
         "optimize")
             run_optimize "$@"
             ;;
         "trade")
-            start_trading
+            shift  # 移除 "trade" 参数
+            start_trading "$@"
             ;;
         "tmux")
             start_tmux_trading
